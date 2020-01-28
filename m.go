@@ -268,26 +268,6 @@ func IfElse(cond bool, ifTrue, ifFalse Element) Element {
 	return ifFalse
 }
 
-// Lazy returns an element that calls fn when it is being rendered.
-func Lazy(fn func() Element) Element {
-	return &lazyNode{
-		Fn: fn,
-	}
-}
-
-type lazyNode struct {
-	Fn func() Element
-}
-
-func (*lazyNode) Element() Element { return nil }
-
-func (e *lazyNode) renderHTML(w io.Writer) error {
-	if err := Render(w, e.Fn()); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Range returns an element that is called for every index from 0 to n.
 func Range(n int, fn func(i int) Element) Element {
 	return For(0, n, 1, fn)

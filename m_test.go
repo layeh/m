@@ -51,12 +51,6 @@ func Test_map(t *testing.T) {
 			``,
 		},
 		{
-			Lazy(func() Element {
-				return T("Hello")
-			}),
-			`Hello`,
-		},
-		{
 			Range(0, func(i int) Element {
 				return F("%d ", i)
 			}),
