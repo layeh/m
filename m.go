@@ -113,7 +113,8 @@ func (e *htmlElement) renderHTML(w io.Writer) error {
 	var i int
 	// Attributes
 	for ; i < len(e.Elements); i++ {
-		if attr, ok := e.Elements[i].(*attr); ok {
+		el := e.Elements[i]
+		if attr, ok := el.(*attr); ok {
 			if _, err := io.WriteString(w, " "); err != nil {
 				return err
 			}
@@ -129,7 +130,7 @@ func (e *htmlElement) renderHTML(w io.Writer) error {
 			if _, err := io.WriteString(w, "\""); err != nil {
 				return err
 			}
-		} else {
+		} else if el != nil {
 			break
 		}
 	}

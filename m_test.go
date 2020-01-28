@@ -83,11 +83,19 @@ func Test_map(t *testing.T) {
 			}),
 			`<h2>AZ</h2><ul><li>Alice</li></ul><h2>TX</h2><ul><li>Bob</li><li>Eve</li></ul>`,
 		},
+		{
+			Range(3, func(i int) Element {
+				return M("option", If(i == 2, Attr("selected", "")), Attrf("value", "%d", i),
+					F("Element %d", i),
+				)
+			}),
+			`<option value="0">Element 0</option><option value="1">Element 1</option><option selected="" value="2">Element 2</option>`,
+		},
 	}
 
 	for _, tt := range tests {
 		if output := RenderString(tt.Element); output != tt.Expected {
-			t.Errorf("RenderString(%#v) = %#v; expected %#v", tt.Element, output, tt.Expected)
+			t.Errorf("RenderString(%#v)\ngot:\n%#v\nexpected:\n%#v", tt.Element, output, tt.Expected)
 		}
 	}
 }
