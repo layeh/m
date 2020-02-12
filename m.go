@@ -24,9 +24,10 @@ type internalElement interface {
 }
 
 type htmlElement struct {
-	TagName  string
-	Elements []Element
-	Empty    bool
+	TagName    string
+	Attributes []*attr
+	Children   []Element
+	Void       bool
 }
 
 // M returns an element that is an HTML tag that is specified by selector.
@@ -42,6 +43,8 @@ type htmlElement struct {
 // class name, or attribute, omit the dynamic value from the selector string and use
 // Attr or Attrf instead.
 //
+// Multiple class attributes are merged together into a space-separated string.
+//
 // elements are the children of the HTML tag. If Attr and Attrf values are used,
 // they must be the first values included in elements.
 //
@@ -52,32 +55,58 @@ func M(selector string, elements ...Element) Element {
 		panic(err)
 	}
 
-	if sel.TagName == "" {
-		sel.TagName = "div"
-	} else {
-		sel.TagName = strings.ToLower(sel.TagName)
+	tagName := "div"
+	if sel.TagName != "" {
+		tagName = strings.ToLower(sel.TagName)
 	}
 
-	allElements := make([]Element, 0, 3+len(elements))
-
+	var id *string
 	if sel.ID != "" {
-		allElements = append(allElements, Attr("id", sel.ID))
+		id = &sel.ID
 	}
 
-	if len(sel.Classes) > 0 {
-		allElements = append(allElements, Attr("class", strings.Join(sel.Classes, " ")))
+	classes := sel.Classes
+	for _, el := range elements {
+		if attribute, ok := el.(*attr); ok {
+			switch attribute.Key {
+			case "id":
+				id = &attribute.Value
+			case "class":
+				classes = append(classes, attribute.Value)
+			}
+		}
 	}
 
-	for _, attr := range sel.Attributes {
-		allElements = append(allElements, Attr(attr[0], attr[1]))
+	attributes := make([]*attr, 0, 1+1+len(sel.Attributes))
+	if id != nil {
+		attributes = append(attributes, &attr{"id", *id})
+	}
+	if len(classes) > 0 {
+		attributes = append(attributes, &attr{"class", strings.Join(classes, " ")})
+	}
+	for _, attribute := range sel.Attributes {
+		attributes = append(attributes, &attr{attribute[0], attribute[1]})
 	}
 
-	allElements = append(allElements, elements...)
+	var children []Element
+	for i, el := range elements {
+		if attr, ok := el.(*attr); ok {
+			switch attr.Key {
+			case "id", "class":
+			default:
+				attributes = append(attributes, attr)
+			}
+		} else if el != nil {
+			children = append([]Element(nil), elements[i:]...)
+			break
+		}
+	}
 
 	return &htmlElement{
-		TagName:  sel.TagName,
-		Elements: allElements,
-		Empty:    voidElements[sel.TagName],
+		TagName:    tagName,
+		Attributes: attributes,
+		Children:   children,
+		Void:       voidElements[sel.TagName],
 	}
 }
 
@@ -110,28 +139,22 @@ func (e *htmlElement) renderHTML(w io.Writer) error {
 		return err
 	}
 
-	var i int
 	// Attributes
-	for ; i < len(e.Elements); i++ {
-		el := e.Elements[i]
-		if attr, ok := el.(*attr); ok {
-			if _, err := io.WriteString(w, " "); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, attr.Key); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "=\""); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, template.HTMLEscapeString(attr.Value)); err != nil {
-				return err
-			}
-			if _, err := io.WriteString(w, "\""); err != nil {
-				return err
-			}
-		} else if el != nil {
-			break
+	for _, attr := range e.Attributes {
+		if _, err := io.WriteString(w, " "); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, attr.Key); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "=\""); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, template.HTMLEscapeString(attr.Value)); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "\""); err != nil {
+			return err
 		}
 	}
 
@@ -139,10 +162,10 @@ func (e *htmlElement) renderHTML(w io.Writer) error {
 		return err
 	}
 
-	if !e.Empty {
+	if !e.Void {
 		// Children
-		for ; i < len(e.Elements); i++ {
-			if err := Render(w, e.Elements[i]); err != nil {
+		for _, el := range e.Children {
+			if err := Render(w, el); err != nil {
 				return err
 			}
 		}

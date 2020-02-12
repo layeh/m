@@ -91,6 +91,22 @@ func Test_map(t *testing.T) {
 			}),
 			`<option value="0">Element 0</option><option value="1">Element 1</option><option selected="" value="2">Element 2</option>`,
 		},
+		{
+			M("p.text-right", If(false, Attr("class", "m-0")), Attr("class", "alpha-25"), T("Text")),
+			`<p class="text-right alpha-25">Text</p>`,
+		},
+		{
+			M("p#id-0", If(false, Attr("id", "id-1")), T("Text")),
+			`<p id="id-0">Text</p>`,
+		},
+		{
+			M("p#id-0", If(true, Attr("id", "id-1")), T("Text")),
+			`<p id="id-1">Text</p>`,
+		},
+		{
+			M("p#id-0", If(true, Attr("id", "id-1")), Attr("id", "id-2"), T("Text")),
+			`<p id="id-2">Text</p>`,
+		},
 	}
 
 	for _, tt := range tests {
